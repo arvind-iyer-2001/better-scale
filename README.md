@@ -4,6 +4,21 @@ An iPhone app for the Cult Smart Scale (model CS-BF01) and scales built on the s
 
 Not affiliated with, endorsed by, or derived from the code of Cult.fit or the scale's manufacturer.
 
+<p>
+  <img src="docs/screenshots/home.png" width="190" alt="Home">
+  <img src="docs/screenshots/metrics.png" width="190" alt="Metric tiles">
+  <img src="docs/screenshots/metric-explained.png" width="190" alt="Metric explanation">
+  <img src="docs/screenshots/more-menu.png" width="190" alt="More menu">
+</p>
+<p>
+  <img src="docs/screenshots/settings.png" width="190" alt="Settings">
+  <img src="docs/screenshots/hidden-readings.png" width="190" alt="Hidden readings">
+  <img src="docs/screenshots/onboarding-how.png" width="190" alt="Onboarding">
+  <img src="docs/screenshots/onboarding-about-you.png" width="190" alt="Onboarding, about you">
+</p>
+
+Screenshots show the simulator demo build with sample data.
+
 ## What it does
 
 - **Zero-touch weigh-ins.** The app captures a reading in the background, even after you reboot the phone. iOS wakes it when the scale switches on.
