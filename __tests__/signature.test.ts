@@ -6,7 +6,7 @@ const rd = (id: number, over: Partial<Reading> = {}): Reading => ({
   confirmed: false, healthSynced: false, ...over,
 });
 const profile = { sex: 'male' as const, heightCm: 180, birthDate: '2001-03-10', athlete: false, goalWeightKg: null };
-const settings = { reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true };
+const settings = { reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true, weeklySummary: true };
 
 describe('dataSignature', () => {
   it('is identical for equal data in fresh arrays', () => {

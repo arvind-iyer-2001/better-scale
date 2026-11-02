@@ -82,9 +82,9 @@ describe('Repo', () => {
 
   it('round-trips profile and settings, with defaults', async () => {
     expect(await repo.getProfile()).toBeNull();
-    expect(await repo.getSettings()).toEqual({ reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true });
+    expect(await repo.getSettings()).toEqual({ reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true, weeklySummary: true });
     await repo.saveProfile(profile);
-    await repo.saveSettings({ reminderTime: '06:30', cutoffTime: '10:00', reminderEnabled: false });
+    await repo.saveSettings({ reminderTime: '06:30', cutoffTime: '10:00', reminderEnabled: false, weeklySummary: true });
     expect(await repo.getProfile()).toEqual(profile);
     expect((await repo.getSettings()).reminderTime).toBe('06:30');
   });

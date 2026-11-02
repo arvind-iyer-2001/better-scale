@@ -1,7 +1,7 @@
 import { planReminders } from '../src/domain/reminders';
 import type { Settings } from '../src/domain/types';
 
-const S: Settings = { reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true };
+const S: Settings = { reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true, weeklySummary: true };
 const at = (d: string, hm: string) => new Date(`${d}T${hm}:00`);
 const hm = (d: Date) => `${d.getMonth() + 1}-${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
@@ -39,7 +39,7 @@ describe('planReminders', () => {
   });
 
   it('disabled reminders plan nothing', () => {
-    const p = planReminders({ ...S, reminderEnabled: false }, at('2026-11-02', '06:00'), null);
+    const p = planReminders({ ...S, reminderEnabled: false, weeklySummary: true }, at('2026-11-02', '06:00'), null);
     expect(p).toEqual({ morning: [], followUp: [] });
   });
 

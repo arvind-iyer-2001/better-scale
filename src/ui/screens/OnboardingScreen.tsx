@@ -39,7 +39,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
     const p: Profile = { sex, heightCm: height, birthDate: birth, athlete, goalWeightKg: goal };
     await repo.saveProfile(p);
     await repo.recomputeAll(p);
-    await repo.saveSettings({ reminderTime: rem, cutoffTime: '09:30', reminderEnabled: remOn });
+    await repo.saveSettings({ reminderTime: rem, cutoffTime: '09:30', reminderEnabled: remOn, weeklySummary: true });
     await refreshReminders();
     onDone();
   };

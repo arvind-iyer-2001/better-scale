@@ -2,12 +2,14 @@ import { Pressable, Text } from 'react-native';
 import { fmt, type MetricDef } from './metrics';
 import { theme } from './theme';
 
-type Props = { def: MetricDef; value: number | undefined; selected: boolean; onPress: () => void };
+type Props = { def: MetricDef; value: number | undefined; selected: boolean; onPress: () => void; onLongPress?: () => void };
 
-export function MetricTile({ def, value, selected, onPress }: Props) {
+export function MetricTile({ def, value, selected, onPress, onLongPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       style={{
         width: '48%', backgroundColor: theme.card, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12,
         marginBottom: 8, borderWidth: 1.5, borderColor: selected ? def.color : 'transparent',

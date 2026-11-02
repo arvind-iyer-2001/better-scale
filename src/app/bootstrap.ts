@@ -6,6 +6,7 @@ import { planReminders } from '../domain/reminders';
 import { startCapture } from '../native/ble';
 import { healthSink } from '../native/health';
 import { log } from '../native/log';
+import { nextSundayAt, weeklySummary } from '../domain/summary';
 import { applyPlan, notifyInaccurate } from '../native/notifications';
 import { captureReading } from './capture';
 import { CaptureCoordinator } from './coordinator';
@@ -26,9 +27,13 @@ export async function flushHealth(): Promise<void> {
 export async function refreshReminders(): Promise<void> {
   try {
     const repo = await getRepo();
-    const all = await repo.listReadings(Date.now() - 2 * 86_400_000, true);
+    const now = new Date();
+    const all = await repo.listReadings(now.getTime() - 15 * 86_400_000, true);
     const last = all.length ? new Date(Math.max(...all.map((r) => r.ts))) : null;
-    await applyPlan(planReminders(await repo.getSettings(), new Date(), last));
+    const settings = await repo.getSettings();
+    const sunday = nextSundayAt(now, '09:00');
+    const weekly = settings.weeklySummary ? { date: sunday, ...weeklySummary(all, sunday) } : null;
+    await applyPlan(planReminders(settings, now, last), weekly);
   } catch (e: any) {
     await log(`reminder refresh error: ${e?.message ?? e}`);
   }

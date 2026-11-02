@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState, Linking, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Linking, Modal, Pressable, ScrollView, Share, Text, View, useWindowDimensions } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
 import { getRepo } from '../../app/bootstrap';
 import { buildSeries, type Range } from '../../domain/series';
 import { findIssues, daysLeft } from '../../domain/status';
+import { shareText } from '../../domain/summary';
 import { pairScale } from '../../native/ble';
 import { healthAccessState, requestHealthAccess } from '../../native/health';
 import { notificationAccessState, requestNotificationAccess } from '../../native/notifications';
 import type { MetricKey, Profile, Reading } from '../../domain/types';
 import { MetricTile } from '../MetricTile';
 import { TrendChart } from '../TrendChart';
-import { METRICS, fmt } from '../metrics';
+import { METRICS, fmt, type MetricDef } from '../metrics';
 import { theme } from '../theme';
 
 type Props = {
@@ -22,6 +24,7 @@ const RANGES: Range[] = ['1M', '3M', '1Y'];
 
 export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, onSettings, onPaired }: Props) {
   const [pairMsg, setPairMsg] = useState('');
+  const [explain, setExplain] = useState<MetricDef | null>(null);
   const [health, setHealth] = useState<string | null>(null);
   const [notif, setNotif] = useState<string | null>(null);
   const checkAccess = useCallback(() => {
@@ -47,6 +50,16 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
   const latest = readings[readings.length - 1];
   const now = new Date();
   const series = useMemo(() => buildSeries(readings, metric, range, now), [readings, metric, range]);
+
+  const seen = useRef<{ latest: number | null; hidden: number } | null>(null);
+  useEffect(() => {
+    const cur = { latest: latest?.id ?? null, hidden: hiddenCount };
+    const prev = seen.current;
+    seen.current = cur;
+    if (!prev) return;
+    if (cur.hidden > prev.hidden) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    else if (cur.latest !== null && cur.latest !== prev.latest) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  }, [latest?.id, hiddenCount]);
 
   const goal = profile?.goalWeightKg ?? null;
   const toGoal = goal !== null && latest ? latest.weightKg - goal : null;
@@ -105,12 +118,17 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
           </Text>
         )}
         {latest && (
-          <Pressable
-            hitSlop={8}
-            onPress={async () => { await (await getRepo()).setFlag(latest.id, true, 'Hidden by you'); onPaired(); }}
-          >
-            <Text style={{ color: theme.dim, fontSize: 12, marginTop: 6, textDecorationLine: 'underline' }}>Not you? Hide this reading</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
+            <Pressable
+              hitSlop={8}
+              onPress={async () => { await (await getRepo()).setFlag(latest.id, true, 'Hidden by you'); onPaired(); }}
+            >
+              <Text style={{ color: theme.dim, fontSize: 12, textDecorationLine: 'underline' }}>Not you? Hide this reading</Text>
+            </Pressable>
+            <Pressable hitSlop={8} onPress={() => Share.share({ message: shareText(readings, profile?.goalWeightKg ?? null, new Date()) })}>
+              <Text style={{ color: theme.cyan, fontSize: 12, textDecorationLine: 'underline' }}>Share progress</Text>
+            </Pressable>
+          </View>
         )}
       </View>
 
@@ -133,12 +151,33 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 14 }}>
         {METRICS.map((m) => (
-          <MetricTile key={m.key} def={m} value={latest?.metrics[m.key]} selected={m.key === metric} onPress={() => setMetric(m.key)} />
+          <MetricTile key={m.key} def={m} value={latest?.metrics[m.key]} selected={m.key === metric} onPress={() => setMetric(m.key)} onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setExplain(m); }} />
         ))}
       </View>
       <Text style={{ color: theme.dim, fontSize: 11, marginTop: 8 }}>
-        Body fat is the scale's own model value. It reads about 4 points higher than Cult Connect, which lowers it.
+        Body fat is the scale's own model value. It can read a few points higher than the scale maker's own app, which adjusts it down.
       </Text>
+
+      <Modal visible={explain !== null} transparent animationType="fade" onRequestClose={() => setExplain(null)}>
+        <Pressable onPress={() => setExplain(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <Pressable style={{ backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 }}>
+            {explain && (
+              <>
+                <Text style={{ color: explain.color, fontSize: 13, fontWeight: '700' }}>{explain.label.toUpperCase()}</Text>
+                <Text style={{ color: theme.text, fontSize: 40, fontWeight: '700', marginTop: 4 }}>
+                  {fmt(latest?.metrics[explain.key], explain.decimals)}
+                  <Text style={{ color: theme.dim, fontSize: 18, fontWeight: '500' }}> {explain.unit}</Text>
+                </Text>
+                <Text style={{ color: theme.text, fontSize: 16, lineHeight: 23, marginTop: 12 }}>{explain.about}</Text>
+                <Text style={{ color: theme.dim, fontSize: 12, marginTop: 14 }}>Estimates from a foot-to-foot scale. Watch the trend, not single readings.</Text>
+                <Pressable onPress={() => { setMetric(explain.key); setExplain(null); }} style={{ marginTop: 16 }}>
+                  <Text style={{ color: theme.cyan, fontSize: 15, fontWeight: '600' }}>Show trend</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }

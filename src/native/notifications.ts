@@ -36,7 +36,9 @@ const date = (d: Date) =>
   }) as const;
 
 /** Replaces every scheduled reminder with the plan. */
-export async function applyPlan(plan: ReminderPlan): Promise<void> {
+export type WeeklyPlan = { date: Date; title: string; body: string };
+
+export async function applyPlan(plan: ReminderPlan, weekly: WeeklyPlan | null = null): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
   for (const d of plan.morning) {
     await Notifications.scheduleNotificationAsync({
@@ -49,6 +51,9 @@ export async function applyPlan(plan: ReminderPlan): Promise<void> {
       content: { title: 'No weigh-in yet', body: FOLLOW_UP_BODY },
       trigger: date(d),
     });
+  }
+  if (weekly) {
+    await Notifications.scheduleNotificationAsync({ content: { title: weekly.title, body: weekly.body }, trigger: date(weekly.date) });
   }
   const pending = await Notifications.getAllScheduledNotificationsAsync();
   await log(`reminders scheduled: ${pending.length} (permission ${(await Notifications.getPermissionsAsync()).status})`);

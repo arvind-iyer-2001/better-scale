@@ -8,7 +8,7 @@ export interface Db {
   all<T = any>(sql: string, params?: (string | number | null)[]): Promise<T[]>;
 }
 
-const DEFAULT_SETTINGS: Settings = { reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true };
+const DEFAULT_SETTINGS: Settings = { reminderTime: '07:00', cutoffTime: '09:30', reminderEnabled: true, weeklySummary: true };
 
 type Row = {
   id: number; ts: number; raw_hex: string; weight_kg: number; impedance_ohm: number | null; metrics: string;

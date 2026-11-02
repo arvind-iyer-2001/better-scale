@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import * as FS from 'expo-file-system/legacy';
 import Constants from 'expo-constants';
 import { getRepo, refreshReminders } from '../../app/bootstrap';
 import { loadDemoData } from '../../app/demo';
+import { shareText, toCsv } from '../../domain/summary';
 import type { Profile, Settings } from '../../domain/types';
 import { pairScale } from '../../native/ble';
 import { healthAccessState, requestHealthAccess } from '../../native/health';
@@ -23,6 +25,7 @@ export function SettingsScreen({ profile, settings, scaleId, onRedo, onDone }: P
   const [health, setHealth] = useState('…');
   const [notif, setNotif] = useState('…');
   const [pairMsg, setPairMsg] = useState('');
+  const [dataMsg, setDataMsg] = useState('');
   const [paired, setPaired] = useState(scaleId !== null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef({ p, s, profileDirty: false });
@@ -102,6 +105,31 @@ export function SettingsScreen({ profile, settings, scaleId, onRedo, onDone }: P
             {open === 'cut' && <View style={{ ...panel, borderBottomWidth: 0 }}><TimePick value={s.cutoffTime} onChange={(v) => editS({ cutoffTime: v })} /></View>}
           </>
         )}
+      </Group>
+
+      <Group title="Weekly summary" footer="A Sunday 09:00 notification comparing this week to last week.">
+        <Row label="Send weekly summary" last right={<Toggle value={s.weeklySummary} onChange={(v) => editS({ weeklySummary: v })} />} />
+      </Group>
+
+      <Group title="Your data" footer={dataMsg || 'The CSV has every reading, including hidden ones, with all metrics.'}>
+        <Row
+          label="Export readings (CSV)"
+          onPress={async () => {
+            try {
+              const repo = await getRepo();
+              const uri = (FS.cacheDirectory ?? '') + 'better-scale-readings.csv';
+              await FS.writeAsStringAsync(uri, toCsv(await repo.listReadings(undefined, true)));
+              await Share.share({ url: uri });
+            } catch (e: any) { setDataMsg(`Export failed: ${e?.message ?? e}`); }
+          }}
+        />
+        <Row
+          label="Share progress" last
+          onPress={async () => {
+            const repo = await getRepo();
+            await Share.share({ message: shareText(await repo.listReadings(), p.goalWeightKg, new Date()) });
+          }}
+        />
       </Group>
 
       <Group title="Connections" footer={pairMsg || undefined}>

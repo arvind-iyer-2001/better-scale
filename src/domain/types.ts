@@ -17,6 +17,7 @@ export type Settings = {
   reminderTime: string; // HH:MM local
   cutoffTime: string; // HH:MM local
   reminderEnabled: boolean;
+  weeklySummary: boolean; // Sunday 09:00 notification
 };
 
 export type Reading = {
