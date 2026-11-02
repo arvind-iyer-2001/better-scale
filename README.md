@@ -120,4 +120,4 @@ The body-composition formulas in `src/domain/bodycomp.ts` were reimplemented by 
 
 ## License
 
-No license has been chosen yet. Until one is added, all rights are reserved. (The `LICENSE` file currently in this repo came with the Expo project template and is Expo's, not this project's.)
+No license has been chosen yet. Until one is added, all rights are reserved.
