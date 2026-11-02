@@ -50,7 +50,7 @@ const coordinator = new CaptureCoordinator(async (session) => {
     session,
   );
   await log(reading ? `reading ${reading.weightKg} kg flagged=${reading.flagged}` : 'session ended without a valid reading');
-}, 3000);
+}, 3000, (e: any) => { log(`capture failed: ${e?.message ?? e}`); });
 
 startCapture(
   {

@@ -72,4 +72,14 @@ describe('CaptureCoordinator', () => {
     expect(done).toHaveLength(2);
     expect(done[1].result()!.weightKg).toBe(124.9);
   });
+
+  it('reports a failing capture instead of swallowing it', async () => {
+    const errors: unknown[] = [];
+    const c = new CaptureCoordinator(async () => { throw new Error('db closed'); }, 3000, (e) => errors.push(e));
+    c.onFrame(fr(FINAL), 0);
+    jest.advanceTimersByTime(3000);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(errors).toHaveLength(1);
+  });
 });

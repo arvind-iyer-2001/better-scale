@@ -88,4 +88,23 @@ describe('Repo', () => {
     expect(await repo.getProfile()).toEqual(profile);
     expect((await repo.getSettings()).reminderTime).toBe('06:30');
   });
+
+  it('recomputeAll is all-or-nothing', async () => {
+    const inner = memDb();
+    let updates = 0;
+    const flaky: Db = {
+      exec: inner.exec,
+      all: inner.all,
+      run: async (sql, p) => {
+        if (sql.startsWith('UPDATE readings SET metrics') && ++updates === 2) throw new Error('disk full');
+        return inner.run(sql, p);
+      },
+    };
+    const repo = await Repo.withDb(flaky);
+    await repo.insertReading(mk(1_000_000_000_000, 125));
+    await repo.insertReading(mk(1_000_000_100_000, 126));
+    await expect(repo.recomputeAll(profile)).rejects.toThrow('disk full');
+    const metrics = (await repo.listReadings()).map((r) => r.metrics);
+    expect(metrics).toEqual([{ weightKg: 125 }, { weightKg: 126 }]);
+  });
 });

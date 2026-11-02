@@ -40,13 +40,13 @@ export async function applyPlan(plan: ReminderPlan): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
   for (const d of plan.morning) {
     await Notifications.scheduleNotificationAsync({
-      content: { title: 'Time to weigh in', body: MORNING_BODY, interruptionLevel: 'timeSensitive' },
+      content: { title: 'Time to weigh in', body: MORNING_BODY },
       trigger: date(d),
     });
   }
   for (const d of plan.followUp) {
     await Notifications.scheduleNotificationAsync({
-      content: { title: 'No weigh-in yet', body: FOLLOW_UP_BODY, interruptionLevel: 'timeSensitive' },
+      content: { title: 'No weigh-in yet', body: FOLLOW_UP_BODY },
       trigger: date(d),
     });
   }

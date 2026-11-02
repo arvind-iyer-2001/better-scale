@@ -6,6 +6,8 @@ import type { ReadingSession } from '../domain/session';
 import type { Metrics, Reading } from '../domain/types';
 
 const WINDOW_MS = 28 * 86_400_000;
+const DUPLICATE_MS = 120_000; // a Bluetooth drop mid-weigh-in replays the same weigh-in
+const DUPLICATE_KG = 0.2;
 
 export type CaptureDeps = {
   repo: Repo;
@@ -26,6 +28,9 @@ export async function captureReading(deps: CaptureDeps, session: ReadingSession)
         res.impedanceOhm,
       )
     : { weightKg: res.weightKg };
+  const recent = await repo.listReadings(res.atMs - DUPLICATE_MS, true);
+  const twin = recent.find((r) => Math.abs(r.weightKg - res.weightKg) <= DUPLICATE_KG && Math.abs(r.ts - res.atMs) <= DUPLICATE_MS);
+  if (twin) return twin;
   const history = (await repo.listReadings(now().getTime() - WINDOW_MS)).map((r) => ({ ts: r.ts, weightKg: r.weightKg }));
   const verdict = judge(history, { ts: res.atMs, weightKg: res.weightKg });
   const draft: Omit<Reading, 'id'> = {

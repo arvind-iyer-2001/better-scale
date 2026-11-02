@@ -44,4 +44,14 @@ describe('ReadingSession', () => {
     s.push(fr('CF 40 90 B6 30 FF FF FF 00 00 66'), 1);
     expect(s.result()).toMatchObject({ weightKg: 124.7, impedanceOhm: null });
   });
+
+  it('a later frame at the same weight fills in impedance missing from the first', () => {
+    const bytes = [0xcf, 0x40, 0x90, 0xb6, 0x30, 0xff, 0xff, 0xff, 0x00, 0x00];
+    const noZ = fr([...bytes, bytes.reduce((a, b) => a ^ b, 0)].map((b) => b.toString(16)).join(' '));
+    const s = new ReadingSession();
+    s.push(noZ, 1000);
+    expect(s.result()!.impedanceOhm).toBeNull();
+    s.push(fr(FINAL), 1100);
+    expect(s.result()).toEqual({ weightKg: 124.7, impedanceOhm: 416, rawHex: fr(FINAL).hex, atMs: 1000 });
+  });
 });

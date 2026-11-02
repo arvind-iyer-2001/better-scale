@@ -69,4 +69,25 @@ describe('captureReading', () => {
     expect(sink.seen).toHaveLength(1);
     expect(sink.seen[0].flagged).toBe(true);
   });
+
+  it('ignores a second session at the same weight within two minutes (Bluetooth drop mid-weigh-in)', async () => {
+    const sink = mkSink();
+    const first = (await captureReading({ repo, now: () => NOW, sink }, sessionWith(FINAL)))!;
+    const sink2 = mkSink();
+    const s2 = new ReadingSession();
+    s2.push(frame(FINAL), NOW.getTime() + 40_000);
+    const again = await captureReading({ repo, now: () => NOW, sink: sink2 }, s2);
+    expect(await repo.listReadings()).toHaveLength(1);
+    expect(again!.id).toBe(first.id);
+    expect(sink2.seen).toHaveLength(0);
+  });
+
+  it('still records the same weight when the earlier reading is more than two minutes old', async () => {
+    const sink = mkSink();
+    await captureReading({ repo, now: () => NOW, sink }, sessionWith(FINAL));
+    const s2 = new ReadingSession();
+    s2.push(frame(FINAL), NOW.getTime() + 3 * 60_000);
+    await captureReading({ repo, now: () => NOW, sink }, s2);
+    expect(await repo.listReadings()).toHaveLength(2);
+  });
 });

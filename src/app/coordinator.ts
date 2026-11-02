@@ -14,6 +14,7 @@ export class CaptureCoordinator {
   constructor(
     private onFinish: (s: ReadingSession) => Promise<void>,
     private windowMs = 3000,
+    private onError: (e: unknown) => void = () => {},
   ) {}
 
   onFrame(frame: Frame, nowMs: number): void {
@@ -36,7 +37,7 @@ export class CaptureCoordinator {
     this.finished = true;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
-    this.onFinish(this.session).catch(() => {});
+    this.onFinish(this.session).catch((e) => this.onError(e));
   }
 
   private reset(): void {

@@ -18,6 +18,8 @@ export class ReadingSession {
       this.best = next;
     } else if (Math.round(Math.abs(w - this.best.weightKg) * 100) >= 10) {
       this.best = { ...next, atMs: this.best.atMs };
+    } else if (this.best.impedanceOhm === null && next.impedanceOhm !== null) {
+      this.best = { ...next, atMs: this.best.atMs };
     }
   }
 

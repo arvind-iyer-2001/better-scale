@@ -32,7 +32,8 @@ export class Repo {
         flagged INTEGER NOT NULL DEFAULT 0, flag_reason TEXT, confirmed INTEGER NOT NULL DEFAULT 0,
         health_synced INTEGER NOT NULL DEFAULT 0);
       CREATE INDEX IF NOT EXISTS readings_ts ON readings(ts);
-      CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
+      CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      INSERT OR IGNORE INTO kv (key, value) VALUES ('schema_version', '1');`);
     return new Repo(db);
   }
 
@@ -110,13 +111,20 @@ export class Repo {
   /** Recompute every reading's metrics from stored weight and impedance; age is taken at each reading's time. */
   async recomputeAll(p: Profile): Promise<void> {
     const rows = await this.db.all<Row>('SELECT * FROM readings');
-    for (const r of rows) {
-      const m = computeMetrics(
-        { sex: p.sex, athlete: p.athlete, heightCm: p.heightCm, ageYears: ageYears(p.birthDate, r.ts) },
-        r.weight_kg,
-        r.impedance_ohm,
-      );
-      await this.db.run('UPDATE readings SET metrics = ? WHERE id = ?', [JSON.stringify(m), r.id]);
+    await this.db.exec('BEGIN');
+    try {
+      for (const r of rows) {
+        const m = computeMetrics(
+          { sex: p.sex, athlete: p.athlete, heightCm: p.heightCm, ageYears: ageYears(p.birthDate, r.ts) },
+          r.weight_kg,
+          r.impedance_ohm,
+        );
+        await this.db.run('UPDATE readings SET metrics = ? WHERE id = ?', [JSON.stringify(m), r.id]);
+      }
+      await this.db.exec('COMMIT');
+    } catch (e) {
+      await this.db.exec('ROLLBACK');
+      throw e;
     }
   }
 }
