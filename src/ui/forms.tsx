@@ -68,7 +68,7 @@ export function Ghost({ label, onPress }: { label: string; onPress: () => void }
 
 export function TimePick({ value, onChange }: { value: string; onChange: (hm: string) => void }) {
   return (
-    <DateTimePicker mode="time" display="spinner" themeVariant="dark" textColor={theme.text} value={fromHM(value)} onChange={(_, d) => d && onChange(toHM(d))} minuteInterval={5} />
+    <DateTimePicker mode="time" display="spinner" themeVariant="dark" textColor={theme.text} value={fromHM(value)} onChange={(_, d) => d && onChange(toHM(d))} />
   );
 }
 

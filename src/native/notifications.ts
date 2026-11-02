@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { log } from './log';
 import type { ReminderPlan } from '../domain/reminders';
 import type { Reading } from '../domain/types';
 
@@ -11,6 +12,19 @@ const FOLLOW_UP_BODY = "Didn't catch your weigh-in. Open the app once so it can 
 
 export async function requestNotificationAccess(): Promise<boolean> {
   return (await Notifications.requestPermissionsAsync()).status === 'granted';
+}
+
+export async function notificationAccessState(): Promise<'granted' | 'denied' | 'undetermined'> {
+  const p = await Notifications.getPermissionsAsync();
+  return p.status === 'granted' ? 'granted' : p.canAskAgain ? 'undetermined' : 'denied';
+}
+
+/** Fires in a few seconds, so permission and banner display can be checked on the spot. */
+export async function sendTestNotification(): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: { title: 'Test notification', body: 'If you can read this, notifications work.' },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5 },
+  });
 }
 
 // Calendar triggers are floating local times on iOS, so reminders follow the phone across time zones.
@@ -36,6 +50,8 @@ export async function applyPlan(plan: ReminderPlan): Promise<void> {
       trigger: date(d),
     });
   }
+  const pending = await Notifications.getAllScheduledNotificationsAsync();
+  await log(`reminders scheduled: ${pending.length} (permission ${(await Notifications.getPermissionsAsync()).status})`);
 }
 
 export function notifyInaccurate(r: Reading): void {
@@ -45,5 +61,5 @@ export function notifyInaccurate(r: Reading): void {
       body: `${r.weightKg} kg doesn't fit your recent weigh-ins${r.flagReason ? `: ${r.flagReason}` : ''}. Step on again.`,
     },
     trigger: null,
-  }).catch(() => {});
+  }).catch((e) => log(`notifyInaccurate failed: ${e?.message ?? e}`));
 }

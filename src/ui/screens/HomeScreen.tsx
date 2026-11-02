@@ -38,7 +38,7 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
     <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={{ color: theme.dim, fontSize: 12, letterSpacing: 0.4 }}>{when.toUpperCase()}</Text>
-        <Pressable onPress={onSettings}><Text style={{ color: theme.dim, fontSize: 22 }}>⚙︎</Text></Pressable>
+        <Pressable onPress={onSettings} hitSlop={16} style={{ width: 56, height: 48, alignItems: 'flex-end', justifyContent: 'center', marginRight: -8 }}><Text style={{ color: theme.dim, fontSize: 22 }}>⚙︎</Text></Pressable>
       </View>
 
       {!scaleId && (

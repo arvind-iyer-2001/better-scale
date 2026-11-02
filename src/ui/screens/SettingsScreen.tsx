@@ -6,7 +6,7 @@ import { loadDemoData } from '../../app/demo';
 import type { Profile, Settings } from '../../domain/types';
 import { pairScale } from '../../native/ble';
 import { healthAccessState, requestHealthAccess } from '../../native/health';
-import { requestNotificationAccess } from '../../native/notifications';
+import { notificationAccessState, requestNotificationAccess, sendTestNotification } from '../../native/notifications';
 import { DatePick, Group, Row, Segmented, Stepper, TimePick, Toggle } from '../forms';
 import { theme } from '../theme';
 
@@ -21,11 +21,13 @@ export function SettingsScreen({ profile, settings, scaleId, onRedo, onDone }: P
   const [s, setS] = useState(settings);
   const [open, setOpen] = useState<Open>(null);
   const [health, setHealth] = useState('…');
+  const [notif, setNotif] = useState('…');
   const [pairMsg, setPairMsg] = useState('');
   const [paired, setPaired] = useState(scaleId !== null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef({ p, s, profileDirty: false });
 
+  useEffect(() => { notificationAccessState().then(setNotif).catch(() => setNotif('unavailable')); }, []);
   useEffect(() => { healthAccessState().then(setHealth).catch(() => setHealth('unavailable')); }, []);
 
   const persist = async () => {
@@ -114,7 +116,12 @@ export function SettingsScreen({ profile, settings, scaleId, onRedo, onDone }: P
           label="Apple Health" value={healthText} valueColor={health === 'authorized' ? theme.lime : theme.amber}
           onPress={async () => { await requestHealthAccess().catch(() => {}); setHealth(await healthAccessState()); }}
         />
-        <Row label="Notifications" value="Allow" last onPress={async () => { await requestNotificationAccess(); }} />
+        <Row
+          label="Notifications" value={notif === 'granted' ? 'On' : notif === 'denied' ? 'Off' : notif === 'undetermined' ? 'Not set' : notif}
+          valueColor={notif === 'granted' ? theme.lime : theme.amber}
+          onPress={async () => { await requestNotificationAccess(); setNotif(await notificationAccessState()); }}
+        />
+        <Row label="Send test notification" last onPress={async () => { await sendTestNotification(); setPairMsg('Test notification in 5 seconds. Lock the phone or leave the app to see it as a banner.'); }} />
       </Group>
 
       <Group title="About" footer="Don't swipe better-scale away in the app switcher. iOS won't wake a force-quit app when you step on the scale.">
