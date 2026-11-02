@@ -68,6 +68,15 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
     ? new Date(latest.ts).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
     : 'Step on the scale to record your first weigh-in';
   const delta = series.deltaVsAvg7;
+  const startKg = readings[0]?.weightKg ?? latest?.weightKg ?? 0;
+  const reached = toGoal !== null && latest !== undefined && (startKg >= (goal ?? 0) ? toGoal <= 0 : toGoal >= 0);
+  const span = goal !== null ? startKg - goal : 0;
+  const progress = reached ? 1 : goal !== null && latest && Math.abs(span) > 0.05 ? Math.min(1, Math.max(0, (startKg - latest.weightKg) / span)) : 0;
+  // Moving toward the goal reads green; away reads amber, never red. Without a goal it stays neutral.
+  const goodDir = metric === 'weightKg' && goal !== null && delta !== null ? (goal < startKg ? delta < 0 : delta > 0) : null;
+  const deltaColor = delta === null || Math.abs(delta) < 0.05 || goodDir === null ? theme.cyan : goodDir ? theme.lime : theme.amber;
+  const [menu, setMenu] = useState(false);
+  const afterMenu = (fn: () => void) => { setMenu(false); setTimeout(fn, 350); };
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64 }}>
@@ -108,29 +117,34 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
           <Text style={{ color: theme.dim, fontSize: 20, fontWeight: '500' }}> {def.unit}</Text>
         </Text>
         {delta !== null && (
-          <Text style={{ color: theme.dim, fontSize: 14 }}>
-            {delta > 0 ? '+' : ''}{delta.toFixed(def.decimals)} vs 7-day avg
-          </Text>
-        )}
-        {metric === 'weightKg' && toGoal !== null && (
-          <Text style={{ color: theme.dim, fontSize: 14 }}>
-            {toGoal > 0 ? `${toGoal.toFixed(1)} kg to goal` : 'Goal reached'}
-          </Text>
-        )}
-        {latest && (
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
-            <Pressable
-              hitSlop={8}
-              onPress={async () => { await (await getRepo()).setFlag(latest.id, true, 'Hidden by you'); onPaired(); }}
-            >
-              <Text style={{ color: theme.dim, fontSize: 12, textDecorationLine: 'underline' }}>Not you? Hide this reading</Text>
-            </Pressable>
-            <Pressable hitSlop={8} onPress={() => Share.share({ message: shareText(readings, profile?.goalWeightKg ?? null, new Date()) })}>
-              <Text style={{ color: theme.cyan, fontSize: 12, textDecorationLine: 'underline' }}>Share progress</Text>
-            </Pressable>
+          <View style={{ flexDirection: 'row', marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: deltaColor + '26', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 }}>
+              <Text style={{ color: deltaColor, fontSize: 15, fontWeight: '700' }}>
+                {Math.abs(delta) < 0.05 ? '→ Steady' : `${delta > 0 ? '↑' : '↓'} ${Math.abs(delta).toFixed(def.decimals)} ${def.unit}`}
+              </Text>
+              <Text style={{ color: theme.dim, fontSize: 12, marginLeft: 8 }}>vs your 7-day average</Text>
+            </View>
           </View>
         )}
       </View>
+
+      {metric === 'weightKg' && goal !== null && latest && (
+        <View style={{ marginTop: 16, backgroundColor: theme.card, borderRadius: 18, padding: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600' }}>Goal {goal.toFixed(1)} kg</Text>
+            <Text style={{ color: reached ? theme.lime : theme.text, fontSize: 15, fontWeight: '700' }}>
+              {reached ? 'Goal reached 🎉' : `${Math.abs(toGoal!).toFixed(1)} kg to go`}
+            </Text>
+          </View>
+          <View style={{ height: 10, borderRadius: 5, backgroundColor: '#2C2C2E', marginTop: 12, overflow: 'hidden' }}>
+            <View style={{ width: `${Math.round(progress * 100)}%`, height: '100%', borderRadius: 5, backgroundColor: theme.lime }} />
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+            <Text style={{ color: theme.dim, fontSize: 11 }}>Start {startKg.toFixed(1)}</Text>
+            <Text style={{ color: theme.dim, fontSize: 11 }}>{Math.round(progress * 100)}% there</Text>
+          </View>
+        </View>
+      )}
 
       <View style={{ marginTop: 16, backgroundColor: theme.card, borderRadius: 18, padding: 8 }}>
         <TrendChart points={series.points} avg7={series.avg7} color={def.color} width={width - 48} height={160} unit={def.unit} decimals={def.decimals} />
@@ -157,6 +171,44 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
       <Text style={{ color: theme.dim, fontSize: 11, marginTop: 8 }}>
         Body fat is the scale's own model value. It can read a few points higher than the scale maker's own app, which adjusts it down.
       </Text>
+
+      {latest && (
+        <Pressable
+          onPress={() => { Haptics.selectionAsync().catch(() => {}); setMenu(true); }}
+          style={{ marginTop: 20, marginBottom: 32, backgroundColor: theme.card, borderRadius: 14, paddingVertical: 15, alignItems: 'center' }}
+        >
+          <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600' }}>More  •••</Text>
+        </Pressable>
+      )}
+
+      <Modal visible={menu} transparent animationType="fade" onRequestClose={() => setMenu(false)}>
+        <Pressable onPress={() => setMenu(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ padding: 12, paddingBottom: 36 }}>
+            <View style={{ backgroundColor: theme.card, borderRadius: 16, overflow: 'hidden' }}>
+              <Pressable
+                onPress={() => afterMenu(() => Share.share({ message: shareText(readings, profile?.goalWeightKg ?? null, new Date()) }))}
+                style={{ padding: 18, borderBottomWidth: 0.5, borderBottomColor: theme.line }}
+              >
+                <Text style={{ color: theme.cyan, fontSize: 17, textAlign: 'center' }}>Share progress</Text>
+              </Pressable>
+              {hiddenCount > 0 && (
+                <Pressable onPress={() => afterMenu(onHidden)} style={{ padding: 18, borderBottomWidth: 0.5, borderBottomColor: theme.line }}>
+                  <Text style={{ color: theme.text, fontSize: 17, textAlign: 'center' }}>Review {hiddenCount} hidden reading{hiddenCount > 1 ? 's' : ''}</Text>
+                </Pressable>
+              )}
+              <Pressable
+                onPress={async () => { setMenu(false); if (latest) { await (await getRepo()).setFlag(latest.id, true, 'Hidden by you'); onPaired(); } }}
+                style={{ padding: 18 }}
+              >
+                <Text style={{ color: theme.red, fontSize: 17, textAlign: 'center' }}>Not you? Hide latest reading</Text>
+              </Pressable>
+            </View>
+            <Pressable onPress={() => setMenu(false)} style={{ marginTop: 10, backgroundColor: theme.card, borderRadius: 16, padding: 18 }}>
+              <Text style={{ color: theme.text, fontSize: 17, fontWeight: '600', textAlign: 'center' }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       <Modal visible={explain !== null} transparent animationType="fade" onRequestClose={() => setExplain(null)}>
         <Pressable onPress={() => setExplain(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
