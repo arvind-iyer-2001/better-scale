@@ -1,39 +1,27 @@
-// TEMPORARY debug screen (Task 7). Replaced by the real UI in Task 10.
-import { useEffect, useState } from 'react';
-import { Button, SafeAreaView, ScrollView, Text } from 'react-native';
-import { getRepo } from './src/app/bootstrap';
-import { pairScale } from './src/native/ble';
-import { readLog } from './src/native/log';
-import type { Reading } from './src/domain/types';
+import { useState } from 'react';
+import { StatusBar, View } from 'react-native';
+import { HiddenReadingsScreen } from './src/ui/screens/HiddenReadingsScreen';
+import { HomeScreen } from './src/ui/screens/HomeScreen';
+import { SettingsScreen } from './src/ui/screens/SettingsScreen';
+import { useData } from './src/ui/useData';
+import { theme } from './src/ui/theme';
 
 export default function App() {
-  const [readings, setReadings] = useState<Reading[]>([]);
-  const [logText, setLogText] = useState('');
-  const [msg, setMsg] = useState('');
+  const d = useData();
+  const [screen, setScreen] = useState<'home' | 'hidden' | 'settings'>('home');
+  if (!d.loaded || !d.settings) return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
 
-  useEffect(() => {
-    const t = setInterval(async () => {
-      setReadings((await (await getRepo()).listReadings(undefined, true)).slice(-8));
-      setLogText((await readLog()).split('\n').slice(-25).join('\n'));
-    }, 1500);
-    return () => clearInterval(t);
-  }, []);
-
+  const firstRun = !d.profile;
   return (
-    <SafeAreaView style={{ flex: 1, padding: 16, marginTop: 40, backgroundColor: '#000' }}>
-      <Button title="Pair scale (step on it now)" onPress={async () => {
-        try { setMsg('paired ' + (await pairScale(async (id) => (await getRepo()).saveScaleId(id)))); }
-        catch (e: any) { setMsg(String(e?.message ?? e)); }
-      }} />
-      <Text style={{ color: '#8E8E93' }}>{msg}</Text>
-      <ScrollView>
-        {readings.map((r) => (
-          <Text key={r.id} style={{ color: r.flagged ? '#FA114F' : '#fff', fontSize: 12 }}>
-            {new Date(r.ts).toLocaleTimeString()} {r.weightKg} kg z={r.impedanceOhm} fat={r.metrics.fatPct ?? '-'} {r.flagged ? 'FLAGGED' : ''}
-          </Text>
-        ))}
-        <Text selectable style={{ color: '#8E8E93', fontFamily: 'Menlo', fontSize: 10, marginTop: 12 }}>{logText}</Text>
-      </ScrollView>
-    </SafeAreaView>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <StatusBar barStyle="light-content" />
+      {firstRun || screen === 'settings' ? (
+        <SettingsScreen profile={d.profile} settings={d.settings} firstRun={firstRun} onDone={async () => { await d.refresh(); setScreen('home'); }} />
+      ) : screen === 'hidden' ? (
+        <HiddenReadingsScreen hidden={d.hidden} onBack={() => setScreen('home')} onChanged={d.refresh} />
+      ) : (
+        <HomeScreen readings={d.readings} hiddenCount={d.hidden.length} profile={d.profile} onHidden={() => setScreen('hidden')} onSettings={() => setScreen('settings')} />
+      )}
+    </View>
   );
 }
