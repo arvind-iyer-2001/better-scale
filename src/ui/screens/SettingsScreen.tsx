@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { getRepo, refreshReminders } from '../../app/bootstrap';
 import { loadDemoData } from '../../app/demo';
@@ -7,126 +7,130 @@ import type { Profile, Settings } from '../../domain/types';
 import { pairScale } from '../../native/ble';
 import { healthAccessState, requestHealthAccess } from '../../native/health';
 import { requestNotificationAccess } from '../../native/notifications';
+import { DatePick, Group, Row, Segmented, Stepper, TimePick } from '../forms';
 import { theme } from '../theme';
 
-type Props = { profile: Profile | null; settings: Settings; firstRun: boolean; onDone: () => void };
+type Props = { profile: Profile; settings: Settings; scaleId: string | null; onRedo: () => void; onDone: () => void };
+type Open = null | 'height' | 'birth' | 'goal' | 'rem' | 'cut';
 
-const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const dateLabel = (ymd: string) => new Date(ymd + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+const panel = { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: theme.line } as const;
 
-const Field = ({ label, value, onChange, placeholder, keyboard }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; keyboard?: 'numeric' | 'default' }) => (
-  <View style={{ marginTop: 12 }}>
-    <Text style={{ color: theme.dim, fontSize: 12 }}>{label}</Text>
-    <TextInput
-      value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#555" keyboardType={keyboard ?? 'default'}
-      style={{ color: theme.text, backgroundColor: theme.card, borderRadius: 10, padding: 10, marginTop: 4 }}
-    />
-  </View>
-);
-
-export function SettingsScreen({ profile, settings, firstRun, onDone }: Props) {
-  const [sex, setSex] = useState<Profile['sex']>(profile?.sex ?? 'male');
-  const [height, setHeight] = useState(String(profile?.heightCm ?? ''));
-  const [birth, setBirth] = useState(profile?.birthDate ?? '');
-  const [athlete, setAthlete] = useState(profile?.athlete ?? false);
-  const [goal, setGoal] = useState(profile?.goalWeightKg ? String(profile.goalWeightKg) : '');
-  const [rem, setRem] = useState(settings.reminderTime);
-  const [cut, setCut] = useState(settings.cutoffTime);
-  const [remOn, setRemOn] = useState(settings.reminderEnabled);
-  const [error, setError] = useState('');
+export function SettingsScreen({ profile, settings, scaleId, onRedo, onDone }: Props) {
+  const [p, setP] = useState(profile);
+  const [s, setS] = useState(settings);
+  const [open, setOpen] = useState<Open>(null);
   const [health, setHealth] = useState('…');
   const [pairMsg, setPairMsg] = useState('');
+  const [paired, setPaired] = useState(scaleId !== null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef({ p, s, profileDirty: false });
 
   useEffect(() => { healthAccessState().then(setHealth).catch(() => setHealth('unavailable')); }, []);
 
-  const builtAt = (Constants.expoConfig?.extra as { builtAt?: string } | undefined)?.builtAt;
-  const expiresIn = builtAt ? Math.ceil((new Date(builtAt).getTime() + 7 * 86_400_000 - Date.now()) / 86_400_000) : null;
-
-  const save = async () => {
-    const h = Number(height);
-    if (!(h >= 90 && h <= 220)) return setError('Height must be 90 to 220 cm.');
-    if (!DATE.test(birth) || isNaN(new Date(birth).getTime())) return setError('Birth date must look like 2001-03-10.');
-    if (!HM.test(rem) || !HM.test(cut)) return setError('Times must look like 07:00.');
-    const g = goal.trim() ? Number(goal) : null;
-    if (g !== null && !(g >= 30 && g <= 250)) return setError('Goal weight must be 30 to 250 kg.');
-    setError('');
+  const persist = async () => {
+    const { p: np, s: ns, profileDirty } = latest.current;
+    latest.current.profileDirty = false;
     const repo = await getRepo();
-    const p: Profile = { sex, heightCm: h, birthDate: birth, athlete, goalWeightKg: g };
-    await repo.saveProfile(p);
-    await repo.recomputeAll(p);
-    await repo.saveSettings({ reminderTime: rem, cutoffTime: cut, reminderEnabled: remOn });
-    if (firstRun) {
-      await requestNotificationAccess();
-      await requestHealthAccess().catch(() => {});
-    }
+    if (profileDirty) { await repo.saveProfile(np); await repo.recomputeAll(np); }
+    await repo.saveSettings(ns);
     await refreshReminders();
+  };
+  const schedule = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => { timer.current = null; persist().catch(() => {}); }, 500);
+  };
+  const editP = (patch: Partial<Profile>) => {
+    const np = { ...p, ...patch };
+    setP(np); latest.current = { ...latest.current, p: np, profileDirty: true }; schedule();
+  };
+  const editS = (patch: Partial<Settings>) => {
+    const ns = { ...s, ...patch };
+    setS(ns); latest.current = { ...latest.current, s: ns }; schedule();
+  };
+  const done = async () => {
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; await persist().catch(() => {}); }
     onDone();
   };
+  const toggle = (k: Exclude<Open, null>) => setOpen(open === k ? null : k);
+
+  const builtAt = (Constants.expoConfig?.extra as { builtAt?: string } | undefined)?.builtAt;
+  const expiresIn = builtAt ? Math.ceil((new Date(builtAt).getTime() + 7 * 86_400_000 - Date.now()) / 86_400_000) : null;
+  const healthText = health === 'authorized' ? 'On' : health === 'denied' ? 'Off' : health === 'undetermined' ? 'Not set' : health;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64 }} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64, paddingBottom: 48 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ color: theme.text, fontSize: 26, fontWeight: '700' }}>{firstRun ? 'Set up better-scale' : 'Settings'}</Text>
-        {!firstRun && <Pressable onPress={onDone} hitSlop={12}><Text style={{ color: theme.cyan, fontSize: 17 }}>Done</Text></Pressable>}
-      </View>
-      <Text style={{ color: theme.dim, fontSize: 12, marginTop: 4 }}>Your profile is used only on this phone to compute body composition.</Text>
-
-      <View style={{ flexDirection: 'row', marginTop: 16, backgroundColor: '#2C2C2E', borderRadius: 9, padding: 2 }}>
-        {(['male', 'female'] as const).map((s) => (
-          <Pressable key={s} onPress={() => setSex(s)} style={{ flex: 1, padding: 7, borderRadius: 7, backgroundColor: sex === s ? '#636366' : 'transparent' }}>
-            <Text style={{ color: theme.text, textAlign: 'center' }}>{s === 'male' ? 'Male' : 'Female'}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Field label="Height (cm)" value={height} onChange={setHeight} keyboard="numeric" />
-      <Field label="Birth date (YYYY-MM-DD)" value={birth} onChange={setBirth} placeholder="2001-03-10" />
-      <Field label="Goal weight (kg, optional)" value={goal} onChange={setGoal} keyboard="numeric" />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-        <Text style={{ color: theme.text }}>Athlete mode</Text>
-        <Switch value={athlete} onValueChange={setAthlete} />
+        <Text style={{ color: theme.text, fontSize: 30, fontWeight: '700' }}>Settings</Text>
+        <Pressable onPress={done} hitSlop={12}><Text style={{ color: theme.cyan, fontSize: 17, fontWeight: '600' }}>Done</Text></Pressable>
       </View>
 
-      <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700', marginTop: 24 }}>Morning reminder</Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <Text style={{ color: theme.text }}>Remind me</Text>
-        <Switch value={remOn} onValueChange={setRemOn} />
-      </View>
-      <Field label="Reminder time (HH:MM)" value={rem} onChange={setRem} />
-      <Field label="Follow-up if no weigh-in by (HH:MM)" value={cut} onChange={setCut} />
-
-      {error ? <Text style={{ color: theme.red, marginTop: 12 }}>{error}</Text> : null}
-      <Pressable onPress={save} style={{ backgroundColor: theme.red, borderRadius: 12, padding: 14, marginTop: 20 }}>
-        <Text style={{ color: theme.text, textAlign: 'center', fontWeight: '700' }}>{firstRun ? 'Continue' : 'Save'}</Text>
-      </Pressable>
-
-      {!firstRun && (
-        <View style={{ marginTop: 28 }}>
-          <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>Scale</Text>
-          <Pressable onPress={async () => { try { setPairMsg('Step on the scale now…'); await pairScale(async (id) => (await getRepo()).saveScaleId(id)); setPairMsg('Paired.'); } catch (e: any) { setPairMsg(String(e?.message ?? e)); } }}>
-            <Text style={{ color: theme.cyan, marginTop: 8 }}>Pair or re-pair the scale</Text>
-          </Pressable>
-          {pairMsg ? <Text style={{ color: theme.dim, fontSize: 12 }}>{pairMsg}</Text> : null}
-
-          <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700', marginTop: 20 }}>Apple Health</Text>
-          <Text style={{ color: theme.dim, marginTop: 4 }}>Access: {health}</Text>
-          <Pressable onPress={async () => { await requestHealthAccess().catch(() => {}); setHealth(await healthAccessState()); }}>
-            <Text style={{ color: theme.cyan, marginTop: 6 }}>Allow access to Apple Health</Text>
-          </Pressable>
-
-          <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700', marginTop: 20 }}>Install</Text>
-          <Text style={{ color: expiresIn !== null && expiresIn <= 1 ? theme.red : theme.dim, marginTop: 4 }}>
-            {expiresIn === null ? 'Build date unknown.' : expiresIn > 0 ? `Expires in about ${expiresIn} day${expiresIn > 1 ? 's' : ''}. Reinstall from Xcode before then.` : 'Expired. Reinstall from Xcode.'}
-          </Text>
-          <Text style={{ color: theme.dim, fontSize: 12, marginTop: 14 }}>
-            Tip: don't swipe better-scale away in the app switcher. iOS won't wake a force-quit app when you step on the scale.
-          </Text>
-          {(Constants.expoConfig?.extra as { demo?: boolean } | undefined)?.demo && (
-            <View style={{ marginTop: 16 }}>
-              <Pressable onPress={async () => { await loadDemoData(await getRepo(), true); }}><Text style={{ color: theme.amber }}>Load sample data (demo build)</Text></Pressable>
-              <Pressable onPress={async () => { await loadDemoData(await getRepo(), false); }}><Text style={{ color: theme.amber, marginTop: 8 }}>Remove sample data</Text></Pressable>
-            </View>
-          )}
+      <Group title="About you" footer="Used only on this phone to compute body composition. Changes recalculate your history.">
+        <View style={{ ...panel, paddingVertical: 10 }}>
+          <Segmented options={[{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }]} value={p.sex} onChange={(v) => editP({ sex: v })} />
         </View>
+        <Row label="Height" value={`${p.heightCm} cm`} onPress={() => toggle('height')} />
+        {open === 'height' && <View style={panel}><Stepper value={p.heightCm} onChange={(n) => editP({ heightCm: n })} min={90} max={220} unit="cm" /></View>}
+        <Row label="Date of birth" value={dateLabel(p.birthDate)} onPress={() => toggle('birth')} />
+        {open === 'birth' && <View style={panel}><DatePick value={p.birthDate} onChange={(v) => editP({ birthDate: v })} /></View>}
+        <Row label="Goal weight" value={p.goalWeightKg ? `${p.goalWeightKg.toFixed(1)} kg` : 'None'} onPress={() => toggle('goal')} />
+        {open === 'goal' && (
+          <View style={panel}>
+            <Stepper value={p.goalWeightKg ?? 70} onChange={(n) => editP({ goalWeightKg: n })} min={30} max={250} step={0.5} decimals={1} unit="kg" />
+            {p.goalWeightKg !== null && (
+              <Pressable onPress={() => { editP({ goalWeightKg: null }); setOpen(null); }} style={{ marginTop: 12 }}>
+                <Text style={{ color: theme.red, textAlign: 'center' }}>Remove goal</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+        <Row label="Athlete mode" last right={<Switch value={p.athlete} onValueChange={(v) => editP({ athlete: v })} />} />
+      </Group>
+      <Text style={{ color: theme.dim, fontSize: 12, marginHorizontal: 16, marginTop: 6 }}>
+        Athlete mode adjusts the formula for people who train hard most days (about 8+ hours a week). Otherwise leave it off.
+      </Text>
+
+      <Group title="Morning reminder">
+        <Row label="Remind me" last={!s.reminderEnabled} right={<Switch value={s.reminderEnabled} onValueChange={(v) => editS({ reminderEnabled: v })} />} />
+        {s.reminderEnabled && (
+          <>
+            <Row label="Time" value={s.reminderTime} onPress={() => toggle('rem')} />
+            {open === 'rem' && <View style={panel}><TimePick value={s.reminderTime} onChange={(v) => editS({ reminderTime: v })} /></View>}
+            <Row label="Follow-up if not weighed by" value={s.cutoffTime} onPress={() => toggle('cut')} last={open !== 'cut'} />
+            {open === 'cut' && <View style={{ ...panel, borderBottomWidth: 0 }}><TimePick value={s.cutoffTime} onChange={(v) => editS({ cutoffTime: v })} /></View>}
+          </>
+        )}
+      </Group>
+
+      <Group title="Connections" footer={pairMsg || undefined}>
+        <Row
+          label="Scale" value={paired ? 'Connected' : 'Not connected'} valueColor={paired ? theme.lime : theme.amber}
+          onPress={async () => {
+            try { setPairMsg('Step on the scale now…'); await pairScale(async (id) => (await getRepo()).saveScaleId(id)); setPaired(true); setPairMsg('Scale connected.'); }
+            catch (e: any) { setPairMsg(String(e?.message ?? e)); }
+          }}
+        />
+        <Row
+          label="Apple Health" value={healthText} valueColor={health === 'authorized' ? theme.lime : theme.amber}
+          onPress={async () => { await requestHealthAccess().catch(() => {}); setHealth(await healthAccessState()); }}
+        />
+        <Row label="Notifications" value="Allow" last onPress={async () => { await requestNotificationAccess(); }} />
+      </Group>
+
+      <Group title="About" footer="Don't swipe better-scale away in the app switcher. iOS won't wake a force-quit app when you step on the scale.">
+        <Row label="Run setup again" onPress={onRedo} />
+        <Row
+          label="Install expires" last
+          value={expiresIn === null ? 'Unknown' : expiresIn > 0 ? `in ${expiresIn} day${expiresIn > 1 ? 's' : ''}` : 'Expired'}
+          valueColor={expiresIn !== null && expiresIn <= 1 ? theme.red : theme.dim}
+        />
+      </Group>
+
+      {(Constants.expoConfig?.extra as { demo?: boolean } | undefined)?.demo && (
+        <Group title="Demo build">
+          <Row label="Load sample data" onPress={async () => { await loadDemoData(await getRepo(), true); }} />
+          <Row label="Remove sample data" last onPress={async () => { await loadDemoData(await getRepo(), false); }} />
+        </Group>
       )}
     </ScrollView>
   );
