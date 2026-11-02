@@ -53,6 +53,8 @@ bash scripts/fix-entitlements.sh
 
 `pod install` needs a UTF-8 locale: `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install`.
 
+After prebuild, also run `bash scripts/apply-native-assets.sh` (needs `uv`) to apply the app icon and black splash screen.
+
 Select your phone, set your team under Signing & Capabilities, and run a **Release** build. Release matters: a debug build needs Metro running and will not behave like the background-launched app.
 
 From the command line:
