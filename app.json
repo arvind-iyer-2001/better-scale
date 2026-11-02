@@ -1,25 +1,38 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "better-scale",
+    "slug": "better-scale",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#000000",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "dev.arvindiyer.betterscale",
+      "infoPlist": {
+        "UIBackgroundModes": ["bluetooth-central"]
+      }
     },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["central"],
+          "bluetoothAlwaysPermission": "better-scale listens for your scale to record weigh-ins."
+        }
+      ],
+      "expo-sqlite",
+      "expo-dev-client",
+      "expo-notifications",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "better-scale reads your Health data to avoid duplicate entries.",
+          "NSHealthUpdateUsageDescription": "better-scale saves your weigh-ins to Apple Health."
+        }
+      ]
+    ]
   }
 }
