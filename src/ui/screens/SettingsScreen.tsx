@@ -61,7 +61,7 @@ export function SettingsScreen({ profile, settings, scaleId, onRedo, onDone }: P
   const healthText = health === 'authorized' ? 'On' : health === 'denied' ? 'Off' : health === 'undetermined' ? 'Not set' : health;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64, paddingBottom: 48 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64, paddingBottom: 48 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text style={{ color: theme.text, fontSize: 30, fontWeight: '700' }}>Settings</Text>
         <Pressable onPress={done} hitSlop={12}><Text style={{ color: theme.cyan, fontSize: 17, fontWeight: '600' }}>Done</Text></Pressable>

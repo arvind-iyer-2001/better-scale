@@ -53,7 +53,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 28, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 28, flexGrow: 1 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
         {step === 'welcome' && (
           <>
             <Title>Welcome to better-scale</Title>

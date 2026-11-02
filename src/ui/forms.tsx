@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Pressable, Switch, Text, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Pressable, Switch, Text, TextInput, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from './theme';
 
@@ -81,9 +81,21 @@ export function DatePick({ value, onChange }: { value: string; onChange: (ymd: s
   );
 }
 
-/** Big number with − / + steppers. */
+/** Big number with − / + steppers; tap the number to type a value instead. */
 export function Stepper({ value, onChange, min, max, step = 1, unit, decimals = 0 }: { value: number; onChange: (n: number) => void; min: number; max: number; step?: number; unit: string; decimals?: number }) {
-  const set = (n: number) => onChange(Math.min(max, Math.max(min, Math.round(n * 100) / 100)));
+  const [text, setText] = useState(value.toFixed(decimals));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setText(value.toFixed(decimals)); }, [value, decimals, editing]);
+  const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n * 100) / 100));
+  const set = (n: number) => onChange(clamp(n));
+  const commit = () => {
+    setEditing(false);
+    const n = Number(text.replace(',', '.'));
+    if (text.trim() === '' || Number.isNaN(n)) { setText(value.toFixed(decimals)); return; }
+    const c = clamp(decimals === 0 ? Math.round(n) : n);
+    onChange(c);
+    setText(c.toFixed(decimals));
+  };
   const btn = (label: string, delta: number) => (
     <Pressable onPress={() => set(value + delta)} onLongPress={() => set(value + delta * 5)} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#2C2C2E', alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ color: theme.text, fontSize: 28, marginTop: -2 }}>{label}</Text>
@@ -92,9 +104,22 @@ export function Stepper({ value, onChange, min, max, step = 1, unit, decimals = 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
       {btn('−', -step)}
-      <Text style={{ color: theme.text, fontSize: 56, fontWeight: '700' }}>
-        {value.toFixed(decimals)}<Text style={{ color: theme.dim, fontSize: 20, fontWeight: '500' }}> {unit}</Text>
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', flex: 1 }}>
+        <TextInput
+          value={text}
+          onChangeText={(t) => { setEditing(true); setText(t); }}
+          onFocus={() => { setEditing(true); setText(''); }}
+          placeholder={value.toFixed(decimals)}
+          placeholderTextColor="#48484A"
+          onBlur={commit}
+          onSubmitEditing={commit}
+          keyboardType="numbers-and-punctuation"
+          returnKeyType="done"
+          maxLength={6}
+          style={{ color: theme.text, fontSize: 56, fontWeight: '700', minWidth: 90, textAlign: 'center', padding: 0 }}
+        />
+        <Text style={{ color: theme.dim, fontSize: 20, fontWeight: '500' }}> {unit}</Text>
+      </View>
       {btn('+', step)}
     </View>
   );
