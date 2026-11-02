@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import Constants from 'expo-constants';
 import { getRepo, refreshReminders } from '../../app/bootstrap';
+import { loadDemoData } from '../../app/demo';
 import type { Profile, Settings } from '../../domain/types';
 import { pairScale } from '../../native/ble';
 import { healthAccessState, requestHealthAccess } from '../../native/health';
@@ -116,6 +117,12 @@ export function SettingsScreen({ profile, settings, firstRun, onDone }: Props) {
           <Text style={{ color: theme.dim, fontSize: 12, marginTop: 14 }}>
             Tip: don't swipe better-scale away in the app switcher. iOS won't wake a force-quit app when you step on the scale.
           </Text>
+          {(Constants.expoConfig?.extra as { demo?: boolean } | undefined)?.demo && (
+            <View style={{ marginTop: 16 }}>
+              <Pressable onPress={async () => { await loadDemoData(await getRepo(), true); }}><Text style={{ color: theme.amber }}>Load sample data (demo build)</Text></Pressable>
+              <Pressable onPress={async () => { await loadDemoData(await getRepo(), false); }}><Text style={{ color: theme.amber, marginTop: 8 }}>Remove sample data</Text></Pressable>
+            </View>
+          )}
           <Pressable onPress={onDone}><Text style={{ color: theme.cyan, marginTop: 16 }}>‹ Back</Text></Pressable>
         </View>
       )}

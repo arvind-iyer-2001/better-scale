@@ -3,5 +3,5 @@ const base = require('./app.json');
 
 module.exports = () => ({
   ...base.expo,
-  extra: { ...(base.expo.extra ?? {}), builtAt: new Date().toISOString() },
+  extra: { ...(base.expo.extra ?? {}), builtAt: new Date().toISOString(), demo: process.env.BETTER_SCALE_DEMO === '1' },
 });

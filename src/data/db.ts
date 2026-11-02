@@ -76,6 +76,10 @@ export class Repo {
     return rows.map(toReading);
   }
 
+  async deleteByRawHex(hex: string): Promise<void> {
+    await this.db.run('DELETE FROM readings WHERE raw_hex = ?', [hex]);
+  }
+
   async markSynced(id: number): Promise<void> {
     await this.db.run('UPDATE readings SET health_synced = 1 WHERE id = ?', [id]);
   }
