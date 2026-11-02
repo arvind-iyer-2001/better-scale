@@ -17,6 +17,8 @@ export class CaptureCoordinator {
   ) {}
 
   onFrame(frame: Frame, nowMs: number): void {
+    // A weighing (status 1) frame after a finished weigh-in means the user stepped on again: start a new one.
+    if (this.finished && frame.status === 1) this.reset();
     if (this.finished) return;
     this.session.push(frame, nowMs);
     if (this.session.result() && !this.timer) {

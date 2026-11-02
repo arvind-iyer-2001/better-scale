@@ -53,10 +53,16 @@ const coordinator = new CaptureCoordinator(async (session) => {
 }, 3000);
 
 startCapture(
-  { onFrame: (f, at) => coordinator.onFrame(f, at), onDisconnect: () => coordinator.onDisconnect() },
+  {
+    onFrame: (f, at) => coordinator.onFrame(f, at),
+    onDisconnect: () => { coordinator.onDisconnect(); setTimeout(flushHealth, 1500); },
+  },
   async () => (await getRepo()).getScaleId(),
 );
 
 AppState.addEventListener('change', (s) => {
   if (s === 'active') { flushHealth(); refreshReminders(); }
 });
+
+// A foreground cold launch is already 'active' before the listener above exists.
+if (AppState.currentState === 'active') { flushHealth(); refreshReminders(); }

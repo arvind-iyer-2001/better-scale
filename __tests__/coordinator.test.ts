@@ -60,4 +60,16 @@ describe('CaptureCoordinator', () => {
     c.onDisconnect();
     expect(done).toHaveLength(1);
   });
+
+  it('starts a new weigh-in when a weighing (status 1) frame follows a finished one', () => {
+    const { c, done } = make();
+    c.onFrame(fr(FINAL), 0);
+    jest.advanceTimersByTime(3000);
+    expect(done).toHaveLength(1);
+    c.onFrame(fr(WEIGHING), 20000); // user stepped off and on again
+    c.onFrame(fr('CF 22 90 CA 30 1F 13 B7 00 00 3C'), 25000); // 124.9 kg
+    jest.advanceTimersByTime(3000);
+    expect(done).toHaveLength(2);
+    expect(done[1].result()!.weightKg).toBe(124.9);
+  });
 });

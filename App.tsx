@@ -20,7 +20,7 @@ export default function App() {
       ) : screen === 'hidden' ? (
         <HiddenReadingsScreen hidden={d.hidden} onBack={() => setScreen('home')} onChanged={d.refresh} />
       ) : (
-        <HomeScreen readings={d.readings} hiddenCount={d.hidden.length} profile={d.profile} onHidden={() => setScreen('hidden')} onSettings={() => setScreen('settings')} />
+        <HomeScreen readings={d.readings} hiddenCount={d.hidden.length} profile={d.profile} onHidden={() => setScreen('hidden')} onSettings={() => setScreen('settings')} scaleId={d.scaleId} onPaired={d.refresh} />
       )}
     </View>
   );

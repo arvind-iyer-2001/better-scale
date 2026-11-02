@@ -7,12 +7,17 @@ import {
   saveQuantitySample,
 } from '@kingstinct/react-native-healthkit';
 import type { HealthSink } from '../domain/healthsync';
+import { planSamples, type SampleType } from '../domain/healthsamples';
 import type { Reading } from '../domain/types';
 
 const BODY_MASS = 'HKQuantityTypeIdentifierBodyMass' as const;
 const BODY_FAT = 'HKQuantityTypeIdentifierBodyFatPercentage' as const;
 const BMI = 'HKQuantityTypeIdentifierBodyMassIndex' as const;
 const LEAN = 'HKQuantityTypeIdentifierLeanBodyMass' as const;
+
+const IDS: Record<SampleType, typeof BODY_MASS | typeof BODY_FAT | typeof BMI | typeof LEAN> = {
+  bodyMass: BODY_MASS, bmi: BMI, bodyFat: BODY_FAT, leanMass: LEAN,
+};
 
 /** Must be called from the UI: the permission sheet cannot be shown from a background launch. */
 export async function requestHealthAccess(): Promise<void> {
@@ -35,10 +40,9 @@ export const healthSink: HealthSink = {
   },
   async write(r: Reading) {
     const at = new Date(r.ts);
-    const m = r.metrics;
-    await saveQuantitySample(BODY_MASS, 'kg', r.weightKg, at, at);
-    if (m.bmi !== undefined) await saveQuantitySample(BMI, 'count', m.bmi, at, at);
-    if (m.fatPct !== undefined) await saveQuantitySample(BODY_FAT, '%', m.fatPct / 100, at, at);
-    if (m.ffmKg !== undefined) await saveQuantitySample(LEAN, 'kg', m.ffmKg, at, at);
+    const samples = planSamples(r, (t) => authorizationStatusFor(IDS[t]) === AuthorizationStatus.sharingAuthorized);
+    for (const x of samples) {
+      await saveQuantitySample(IDS[x.type], x.unit, x.value, at, at, { HKSyncIdentifier: x.syncId, HKSyncVersion: 1 });
+    }
   },
 };

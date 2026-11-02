@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { getRepo } from '../../app/bootstrap';
 import { buildSeries, type Range } from '../../domain/series';
+import { pairScale } from '../../native/ble';
 import type { MetricKey, Profile, Reading } from '../../domain/types';
 import { MetricTile } from '../MetricTile';
 import { Ring } from '../Ring';
@@ -8,12 +10,16 @@ import { TrendChart } from '../TrendChart';
 import { METRICS, fmt } from '../metrics';
 import { theme } from '../theme';
 
-type Props = { readings: Reading[]; hiddenCount: number; profile: Profile | null; onHidden: () => void; onSettings: () => void };
+type Props = {
+  readings: Reading[]; hiddenCount: number; profile: Profile | null; scaleId: string | null;
+  onHidden: () => void; onSettings: () => void; onPaired: () => void;
+};
 
 const RANGES: Range[] = ['1M', '3M', '1Y'];
 const DAY = 86_400_000;
 
-export function HomeScreen({ readings, hiddenCount, profile, onHidden, onSettings }: Props) {
+export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, onSettings, onPaired }: Props) {
+  const [pairMsg, setPairMsg] = useState('');
   const { width } = useWindowDimensions();
   const [metric, setMetric] = useState<MetricKey>('weightKg');
   const [range, setRange] = useState<Range>('1M');
@@ -39,6 +45,19 @@ export function HomeScreen({ readings, hiddenCount, profile, onHidden, onSetting
         <Text style={{ color: theme.dim, fontSize: 12, letterSpacing: 0.4 }}>{when.toUpperCase()}</Text>
         <Pressable onPress={onSettings}><Text style={{ color: theme.dim, fontSize: 22 }}>⚙︎</Text></Pressable>
       </View>
+
+      {!scaleId && (
+        <Pressable
+          onPress={async () => {
+            try { setPairMsg('Step on the scale now…'); await pairScale(async (id) => (await getRepo()).saveScaleId(id)); setPairMsg(''); onPaired(); }
+            catch (e: any) { setPairMsg(String(e?.message ?? e)); }
+          }}
+          style={{ backgroundColor: theme.card, borderRadius: 14, padding: 14, marginTop: 12, borderWidth: 1.5, borderColor: theme.cyan }}
+        >
+          <Text style={{ color: theme.cyan, fontWeight: '700' }}>Pair your scale</Text>
+          <Text style={{ color: theme.dim, fontSize: 12, marginTop: 2 }}>{pairMsg || 'Tap, then step on the scale so it wakes up.'}</Text>
+        </Pressable>
+      )}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
         <Ring size={96} rings={[{ progress: goalProgress, color: theme.red }, { progress: weekDays / 7, color: theme.lime }]} />

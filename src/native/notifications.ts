@@ -13,7 +13,13 @@ export async function requestNotificationAccess(): Promise<boolean> {
   return (await Notifications.requestPermissionsAsync()).status === 'granted';
 }
 
-const date = (d: Date) => ({ type: Notifications.SchedulableTriggerInputTypes.DATE, date: d }) as const;
+// Calendar triggers are floating local times on iOS, so reminders follow the phone across time zones.
+const date = (d: Date) =>
+  ({
+    type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+    year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes(),
+    repeats: false,
+  }) as const;
 
 /** Replaces every scheduled reminder with the plan. */
 export async function applyPlan(plan: ReminderPlan): Promise<void> {
