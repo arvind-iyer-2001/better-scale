@@ -49,6 +49,7 @@ async function attach(device: Device, why: string): Promise<void> {
       if (error) { log(`monitor error: ${error.message}`); return; }
       if (!ch?.value) return;
       const f = parseFrame(b64ToBytes(ch.value));
+      log(f ? `frame status=${f.status} w=${f.weightKg} z=${f.impedanceOhm}` : `unparsed frame ${ch.value}`);
       if (f) handlers?.onFrame(f, Date.now());
     });
   } catch (e: any) {
