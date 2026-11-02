@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from './theme';
 
@@ -96,6 +96,15 @@ export function Stepper({ value, onChange, min, max, step = 1, unit, decimals = 
         {value.toFixed(decimals)}<Text style={{ color: theme.dim, fontSize: 20, fontWeight: '500' }}> {unit}</Text>
       </Text>
       {btn('+', step)}
+    </View>
+  );
+}
+
+/** Switch pinned to the row's vertical center (the native control otherwise hugs the top of a taller row). */
+export function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <View style={{ height: 48, justifyContent: 'center', alignItems: 'flex-end' }}>
+      <Switch value={value} onValueChange={onChange} style={{ alignSelf: 'flex-end' }} />
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { getRepo, refreshReminders } from '../../app/bootstrap';
 import { loadDemoData } from '../../app/demo';
@@ -7,7 +7,7 @@ import type { Profile, Settings } from '../../domain/types';
 import { pairScale } from '../../native/ble';
 import { healthAccessState, requestHealthAccess } from '../../native/health';
 import { requestNotificationAccess } from '../../native/notifications';
-import { DatePick, Group, Row, Segmented, Stepper, TimePick } from '../forms';
+import { DatePick, Group, Row, Segmented, Stepper, TimePick, Toggle } from '../forms';
 import { theme } from '../theme';
 
 type Props = { profile: Profile; settings: Settings; scaleId: string | null; onRedo: () => void; onDone: () => void };
@@ -84,14 +84,14 @@ export function SettingsScreen({ profile, settings, scaleId, onRedo, onDone }: P
             )}
           </View>
         )}
-        <Row label="Athlete mode" last right={<Switch value={p.athlete} onValueChange={(v) => editP({ athlete: v })} />} />
+        <Row label="Athlete mode" last right={<Toggle value={p.athlete} onChange={(v) => editP({ athlete: v })} />} />
       </Group>
       <Text style={{ color: theme.dim, fontSize: 12, marginHorizontal: 16, marginTop: 6 }}>
         Athlete mode adjusts the formula for people who train hard most days (about 8+ hours a week). Otherwise leave it off.
       </Text>
 
       <Group title="Morning reminder">
-        <Row label="Remind me" last={!s.reminderEnabled} right={<Switch value={s.reminderEnabled} onValueChange={(v) => editS({ reminderEnabled: v })} />} />
+        <Row label="Remind me" last={!s.reminderEnabled} right={<Toggle value={s.reminderEnabled} onChange={(v) => editS({ reminderEnabled: v })} />} />
         {s.reminderEnabled && (
           <>
             <Row label="Time" value={s.reminderTime} onPress={() => toggle('rem')} />
