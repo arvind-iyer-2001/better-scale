@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppState, Linking, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import Constants from 'expo-constants';
 import { getRepo } from '../../app/bootstrap';
 import { buildSeries, type Range } from '../../domain/series';
+import { findIssues, daysLeft } from '../../domain/status';
 import { pairScale } from '../../native/ble';
+import { healthAccessState, requestHealthAccess } from '../../native/health';
+import { notificationAccessState, requestNotificationAccess } from '../../native/notifications';
 import type { MetricKey, Profile, Reading } from '../../domain/types';
 import { MetricTile } from '../MetricTile';
 import { TrendChart } from '../TrendChart';
@@ -18,6 +22,24 @@ const RANGES: Range[] = ['1M', '3M', '1Y'];
 
 export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, onSettings, onPaired }: Props) {
   const [pairMsg, setPairMsg] = useState('');
+  const [health, setHealth] = useState<string | null>(null);
+  const [notif, setNotif] = useState<string | null>(null);
+  const checkAccess = useCallback(() => {
+    healthAccessState().then(setHealth).catch(() => {});
+    notificationAccessState().then(setNotif).catch(() => {});
+  }, []);
+  useEffect(() => {
+    checkAccess();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') checkAccess(); });
+    return () => sub.remove();
+  }, [checkAccess]);
+  const builtAt = (Constants.expoConfig?.extra as { builtAt?: string } | undefined)?.builtAt;
+  const issues = findIssues({ health, notifications: notif, daysLeft: daysLeft(builtAt, new Date()) });
+  const fix = async (id: string) => {
+    if (id === 'health') await requestHealthAccess().catch(() => {});
+    if (id === 'notifications') { if (!(await requestNotificationAccess())) await Linking.openSettings().catch(() => {}); }
+    checkAccess();
+  };
   const { width } = useWindowDimensions();
   const [metric, setMetric] = useState<MetricKey>('weightKg');
   const [range, setRange] = useState<Range>('1M');
@@ -53,6 +75,18 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
           <Text style={{ color: theme.dim, fontSize: 12, marginTop: 2 }}>{pairMsg || 'Tap, then step on the scale so it wakes up.'}</Text>
         </Pressable>
       )}
+
+      {issues.map((i) => (
+        <Pressable
+          key={i.id}
+          disabled={i.id === 'expiry'}
+          onPress={() => fix(i.id)}
+          style={{ backgroundColor: theme.card, borderRadius: 14, padding: 12, marginTop: 10, borderWidth: 1.5, borderColor: theme.amber }}
+        >
+          <Text style={{ color: theme.amber, fontWeight: '700' }}>{i.title}</Text>
+          <Text style={{ color: theme.dim, fontSize: 12, marginTop: 2 }}>{i.detail}</Text>
+        </Pressable>
+      ))}
 
       <View style={{ marginTop: 12 }}>
         <Text style={{ color: theme.dim, fontSize: 13 }}>{def.label}</Text>

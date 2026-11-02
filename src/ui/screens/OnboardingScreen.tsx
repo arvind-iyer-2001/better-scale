@@ -8,8 +8,8 @@ import { requestNotificationAccess } from '../../native/notifications';
 import { DatePick, Ghost, Primary, Segmented, Stepper, TimePick } from '../forms';
 import { theme } from '../theme';
 
-type Step = 'welcome' | 'body' | 'birth' | 'mode' | 'goal' | 'reminder' | 'access' | 'pair';
-const STEPS: Step[] = ['welcome', 'body', 'birth', 'mode', 'goal', 'reminder', 'access', 'pair'];
+type Step = 'welcome' | 'how' | 'tips' | 'body' | 'birth' | 'mode' | 'goal' | 'reminder' | 'access' | 'pair';
+const STEPS: Step[] = ['welcome', 'how', 'tips', 'body', 'birth', 'mode', 'goal', 'reminder', 'access', 'pair'];
 
 const Title = ({ children }: { children: string }) => <Text style={{ color: theme.text, fontSize: 30, fontWeight: '700' }}>{children}</Text>;
 const Sub = ({ children }: { children: string }) => <Text style={{ color: theme.dim, fontSize: 16, marginTop: 8, lineHeight: 22 }}>{children}</Text>;
@@ -59,6 +59,50 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
             <Title>Welcome to better-scale</Title>
             <Sub>Step on your scale and your weight and body composition land here and in Apple Health, with no app to open.</Sub>
             <Text style={{ color: theme.dim, fontSize: 14, marginTop: 24 }}>Takes about a minute. Everything stays on this phone.</Text>
+          </>
+        )}
+
+        {step === 'how' && (
+          <>
+            <Title>How it works</Title>
+            <Sub>Your scale records in the background. There's nothing to open and nothing to press.</Sub>
+            <View style={{ marginTop: 28, gap: 16 }}>
+              {[
+                ['1', 'Step on the scale', 'Wait for the number to lock, about 10 seconds.'],
+                ['2', 'It saves itself', 'iOS wakes better-scale quietly and records the weigh-in.'],
+                ['3', 'It lands in Apple Health', 'Weight, BMI, body fat and lean mass, with the full breakdown here.'],
+              ].map(([n, t, d]) => (
+                <View key={n} style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
+                  <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: theme.red, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: theme.text, fontWeight: '700' }}>{n}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.text, fontSize: 17, fontWeight: '600' }}>{t}</Text>
+                    <Text style={{ color: theme.dim, fontSize: 14, marginTop: 2 }}>{d}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {step === 'tips' && (
+          <>
+            <Title>For good readings</Title>
+            <Sub>A few habits make the trend meaningful.</Sub>
+            <View style={{ marginTop: 28, gap: 16 }}>
+              {[
+                ['Weigh in at the same time', 'First thing in the morning, after the toilet and before eating.'],
+                ['Bare feet, dry skin', 'Body composition reads resistance through your feet, so socks and wet feet skew it.'],
+                ['Stand still on both feet', 'Distribute your weight evenly until the number locks.'],
+                ["Don't swipe the app away", "iOS won't wake a force-quit app when you step on the scale. Rebooting is fine."],
+              ].map(([t, d]) => (
+                <View key={t} style={{ backgroundColor: theme.card, borderRadius: 14, padding: 14 }}>
+                  <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600' }}>{t}</Text>
+                  <Text style={{ color: theme.dim, fontSize: 14, marginTop: 3 }}>{d}</Text>
+                </View>
+              ))}
+            </View>
           </>
         )}
 
