@@ -70,6 +70,14 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
             {toGoal > 0 ? `${toGoal.toFixed(1)} kg to goal` : 'Goal reached'}
           </Text>
         )}
+        {latest && (
+          <Pressable
+            hitSlop={8}
+            onPress={async () => { await (await getRepo()).setFlag(latest.id, true, 'Hidden by you'); onPaired(); }}
+          >
+            <Text style={{ color: theme.dim, fontSize: 12, marginTop: 6, textDecorationLine: 'underline' }}>Not you? Hide this reading</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={{ marginTop: 16, backgroundColor: theme.card, borderRadius: 18, padding: 8 }}>

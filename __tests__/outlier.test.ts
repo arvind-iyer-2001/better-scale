@@ -6,8 +6,12 @@ const steady = (n: number, base = 125) =>
   Array.from({ length: n }, (_, i) => ({ ts: T0 - (n - i) * DAY, weightKg: base + (i % 3 === 0 ? 0.3 : i % 3 === 1 ? -0.2 : 0.1) }));
 
 describe('judge', () => {
-  it('does not judge with fewer than 5 readings', () => {
-    expect(judge(steady(4), { ts: T0, weightKg: 25.3 }).flagged).toBe(false);
+  it('does not judge with fewer than 3 readings', () => {
+    expect(judge(steady(2), { ts: T0, weightKg: 25.3 }).flagged).toBe(false);
+  });
+
+  it('flags a 25 kg reading with only 4 readings of history', () => {
+    expect(judge(steady(4), { ts: T0, weightKg: 25.3 }).flagged).toBe(true);
   });
 
   it('flags a 25 kg reading against steady 125 kg history', () => {

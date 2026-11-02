@@ -1,5 +1,5 @@
 const WINDOW_MS = 28 * 86_400_000;
-const MIN_READINGS = 5;
+const MIN_READINGS = 3;
 const Z_LIMIT = 3.5;
 const MIN_DELTA_KG = 1.5;
 
