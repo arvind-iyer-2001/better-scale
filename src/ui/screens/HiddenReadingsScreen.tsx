@@ -8,8 +8,10 @@ type Props = { hidden: Reading[]; onBack: () => void; onChanged: () => void };
 export function HiddenReadingsScreen({ hidden, onBack, onChanged }: Props) {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64 }}>
-      <Pressable onPress={onBack}><Text style={{ color: theme.cyan, fontSize: 15 }}>‹ Back</Text></Pressable>
-      <Text style={{ color: theme.text, fontSize: 26, fontWeight: '700', marginTop: 8 }}>Hidden readings</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ color: theme.text, fontSize: 26, fontWeight: '700' }}>Hidden readings</Text>
+        <Pressable onPress={onBack} hitSlop={12}><Text style={{ color: theme.cyan, fontSize: 17 }}>Done</Text></Pressable>
+      </View>
       <Text style={{ color: theme.dim, fontSize: 12, marginTop: 4 }}>
         These didn't fit your recent weigh-ins, so they're kept but left off the graphs and out of Apple Health.
       </Text>

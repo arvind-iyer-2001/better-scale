@@ -5,7 +5,6 @@ import { buildSeries, type Range } from '../../domain/series';
 import { pairScale } from '../../native/ble';
 import type { MetricKey, Profile, Reading } from '../../domain/types';
 import { MetricTile } from '../MetricTile';
-import { Ring } from '../Ring';
 import { TrendChart } from '../TrendChart';
 import { METRICS, fmt } from '../metrics';
 import { theme } from '../theme';
@@ -16,7 +15,6 @@ type Props = {
 };
 
 const RANGES: Range[] = ['1M', '3M', '1Y'];
-const DAY = 86_400_000;
 
 export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, onSettings, onPaired }: Props) {
   const [pairMsg, setPairMsg] = useState('');
@@ -29,10 +27,7 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
   const series = useMemo(() => buildSeries(readings, metric, range, now), [readings, metric, range]);
 
   const goal = profile?.goalWeightKg ?? null;
-  const first = readings[0]?.weightKg;
-  const goalProgress =
-    goal && first !== undefined && latest && first !== goal ? (first - latest.weightKg) / (first - goal) : 0;
-  const weekDays = new Set(readings.filter((r) => r.ts > now.getTime() - 7 * DAY).map((r) => new Date(r.ts).toDateString())).size;
+  const toGoal = goal !== null && latest ? latest.weightKg - goal : null;
 
   const when = latest
     ? new Date(latest.ts).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
@@ -59,20 +54,22 @@ export function HomeScreen({ readings, hiddenCount, profile, scaleId, onHidden, 
         </Pressable>
       )}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-        <Ring size={96} rings={[{ progress: goalProgress, color: theme.red }, { progress: weekDays / 7, color: theme.lime }]} />
-        <View style={{ marginLeft: 16 }}>
-          <Text style={{ color: theme.text, fontSize: 36, fontWeight: '700' }}>
-            {fmt(latest?.metrics[metric], def.decimals)}
-            <Text style={{ color: theme.dim, fontSize: 15, fontWeight: '500' }}> {def.unit}</Text>
+      <View style={{ marginTop: 12 }}>
+        <Text style={{ color: theme.dim, fontSize: 13 }}>{def.label}</Text>
+        <Text style={{ color: theme.text, fontSize: 56, fontWeight: '700', lineHeight: 62 }}>
+          {fmt(latest?.metrics[metric], def.decimals)}
+          <Text style={{ color: theme.dim, fontSize: 20, fontWeight: '500' }}> {def.unit}</Text>
+        </Text>
+        {delta !== null && (
+          <Text style={{ color: theme.dim, fontSize: 14 }}>
+            {delta > 0 ? '+' : ''}{delta.toFixed(def.decimals)} vs 7-day avg
           </Text>
-          <Text style={{ color: theme.dim, fontSize: 12 }}>{def.label}</Text>
-          {delta !== null && (
-            <Text style={{ color: delta <= 0 ? theme.lime : theme.amber, fontSize: 13, marginTop: 2 }}>
-              {delta > 0 ? '+' : ''}{delta.toFixed(def.decimals)} vs 7-day avg
-            </Text>
-          )}
-        </View>
+        )}
+        {metric === 'weightKg' && toGoal !== null && (
+          <Text style={{ color: theme.dim, fontSize: 14 }}>
+            {toGoal > 0 ? `${toGoal.toFixed(1)} kg to goal` : 'Goal reached'}
+          </Text>
+        )}
       </View>
 
       <View style={{ marginTop: 16, backgroundColor: theme.card, borderRadius: 18, padding: 8 }}>

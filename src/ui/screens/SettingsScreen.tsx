@@ -65,7 +65,10 @@ export function SettingsScreen({ profile, settings, firstRun, onDone }: Props) {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: 16, paddingTop: 64 }} keyboardShouldPersistTaps="handled">
-      <Text style={{ color: theme.text, fontSize: 26, fontWeight: '700' }}>{firstRun ? 'Set up better-scale' : 'Settings'}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ color: theme.text, fontSize: 26, fontWeight: '700' }}>{firstRun ? 'Set up better-scale' : 'Settings'}</Text>
+        {!firstRun && <Pressable onPress={onDone} hitSlop={12}><Text style={{ color: theme.cyan, fontSize: 17 }}>Done</Text></Pressable>}
+      </View>
       <Text style={{ color: theme.dim, fontSize: 12, marginTop: 4 }}>Your profile is used only on this phone to compute body composition.</Text>
 
       <View style={{ flexDirection: 'row', marginTop: 16, backgroundColor: '#2C2C2E', borderRadius: 9, padding: 2 }}>
@@ -123,7 +126,6 @@ export function SettingsScreen({ profile, settings, firstRun, onDone }: Props) {
               <Pressable onPress={async () => { await loadDemoData(await getRepo(), false); }}><Text style={{ color: theme.amber, marginTop: 8 }}>Remove sample data</Text></Pressable>
             </View>
           )}
-          <Pressable onPress={onDone}><Text style={{ color: theme.cyan, marginTop: 16 }}>‹ Back</Text></Pressable>
         </View>
       )}
     </ScrollView>
